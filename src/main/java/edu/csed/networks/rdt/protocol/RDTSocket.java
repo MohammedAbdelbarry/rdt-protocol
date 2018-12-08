@@ -16,6 +16,7 @@ import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Timer;
 import java.util.TreeMap;
 import java.util.concurrent.Semaphore;
@@ -29,6 +30,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private static final long TIMEOUT = 30000;
     private static final int CHUNK_SIZE = 1024;
     private int seqNo;
+    private double plp;
+    private Random rng;
     private Semaphore semaphore;
     private Map<Long, Packet> senderWindow;
     private static final int RWND = 15;
@@ -81,7 +84,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         byte[] msgBytes = packet.getBytes();
         DatagramPacket datagramPacket = new DatagramPacket(msgBytes, msgBytes.length, address, port);
         System.out.println("TRYING TO SEND");
-        socket.send(datagramPacket);
+        if (rng.nextDouble() > plp) {
+            socket.send(datagramPacket);
+        }
         System.out.println(String.format("SENT TO %s&%d", address, port));
         strategy.sentPacket(packet.getSeqNo());
         TimeoutTask timerTask = new TimeoutTask(packet.getSeqNo());
