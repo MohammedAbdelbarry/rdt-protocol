@@ -105,11 +105,6 @@ public class SenderServer implements AckObserver, TimeoutObserver, Runnable {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-            try {
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
         }
         try {
             fileStream.close();
