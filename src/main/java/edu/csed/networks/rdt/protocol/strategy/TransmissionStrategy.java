@@ -12,8 +12,6 @@ public abstract class TransmissionStrategy {
 
     public abstract boolean isAcked(long seqNo);
 
-    public abstract boolean isSent(long seqNo);
-
     public long getNextSeqNo() {
         return nextSeqNo;
     }
