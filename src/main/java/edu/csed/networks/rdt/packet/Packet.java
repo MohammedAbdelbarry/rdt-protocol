@@ -2,11 +2,26 @@ package edu.csed.networks.rdt.packet;
 
 import org.apache.commons.lang3.Conversion;
 
+import java.net.InetAddress;
+import java.util.Arrays;
+
 public abstract class Packet {
     protected short checksum;
     protected short length;
     protected int seqNo;
     protected byte[] data;
+
+    protected InetAddress host;
+
+    protected int port;
+
+    public InetAddress getHost() {
+        return host;
+    }
+
+    public int getPort() {
+        return port;
+    }
 
     public short getChecksum() {
         return checksum;
@@ -52,9 +67,10 @@ public abstract class Packet {
     @Override
     public String toString() {
         return "Packet{" +
-                "checksum=" + checksum +
-                ", length=" + length +
+                "length=" + length +
                 ", seqNo=" + seqNo +
+                ", host=" + host +
+                ", port=" + port +
                 '}';
     }
 }

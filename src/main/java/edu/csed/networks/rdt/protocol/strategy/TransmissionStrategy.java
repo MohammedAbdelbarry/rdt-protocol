@@ -8,6 +8,12 @@ public abstract class TransmissionStrategy {
     protected long initSeqNo;
     protected int numPackets;
 
+    public abstract boolean isDone();
+
+    public abstract boolean isAcked(long seqNo);
+
+    public abstract boolean isSent(long seqNo);
+
     public long getNextSeqNo() {
         return nextSeqNo;
     }
