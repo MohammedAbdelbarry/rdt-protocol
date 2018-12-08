@@ -4,6 +4,7 @@ import edu.csed.networks.rdt.observer.AckObserver;
 import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.observer.event.AckEvent;
 import edu.csed.networks.rdt.packet.AckPacket;
+import edu.csed.networks.rdt.packet.DataPacket;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -54,13 +55,16 @@ public class ListenerServer implements Runnable, ServerObservable {
 
             try {
                 socket.receive(packet);
-                if (packet.getLength() == AckPacket.ACK_LEN) {
+                if (packet.getLength() == 0) {
                     AckPacket ackPacket = AckPacket.valueOf(packet.getData(), packet.getLength(),
                             packet.getAddress(), packet.getPort());
                     AckEvent event = new AckEvent(ackPacket);
                     broadcast(event);
                 } else {// Data packet.
-                    // TODO: Start a new thread that sends file Or Perform 3-Way Handshake first
+                    DataPacket dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
+                    // TODO: Add strategy.
+                    new SenderServer(socket, packet.getAddress(), packet.getPort(),
+                            new String(dataPacket.getData(), 0, dataPacket.getLength()), null);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
