@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Timer;
 import java.util.TreeMap;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
 public class RDTSocket implements TimeoutObserver, AckObserver {
@@ -145,4 +144,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
     }
 
+    public void close() {
+        for (Timer timer : timers.values()) {
+            timer.cancel();
+        }
+    }
 }

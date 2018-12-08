@@ -35,6 +35,9 @@ public class SenderServer implements Runnable {
     private void send(long chunkNum) throws IOException {
         byte[] bytes = new byte[CHUNK_SIZE];
         int len = fileStream.read(bytes, (int) (chunkNum * CHUNK_SIZE), CHUNK_SIZE);
+        if (len < CHUNK_SIZE) {
+            bytes[len] = 0x03;
+        }
         socket.send(bytes, 0, len);
     }
 
@@ -51,6 +54,7 @@ public class SenderServer implements Runnable {
         }
         try {
             fileStream.close();
+            socket.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -58,6 +62,7 @@ public class SenderServer implements Runnable {
 
     public void stop() {
         workThread.stop();
+        socket.close();
         try {
             fileStream.close();
         } catch (IOException e) {
