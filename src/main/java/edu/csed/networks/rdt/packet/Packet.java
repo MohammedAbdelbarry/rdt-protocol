@@ -3,13 +3,14 @@ package edu.csed.networks.rdt.packet;
 import org.apache.commons.lang3.Conversion;
 
 import java.net.InetAddress;
-import java.util.Arrays;
 
 public abstract class Packet {
     protected short checksum;
     protected short length;
     protected int seqNo;
     protected byte[] data;
+
+    public static final int HEADERS_LENGTH = 8;
 
     protected InetAddress host;
 
@@ -40,11 +41,11 @@ public abstract class Packet {
     }
 
     public byte[] getBytes() {
-        byte[] bytes = new byte[8 + length];
+        byte[] bytes = new byte[HEADERS_LENGTH + length];
         Conversion.shortToByteArray(checksum, 0, bytes, 0, 2);
         Conversion.shortToByteArray(length, 0, bytes, 2, 2);
         Conversion.intToByteArray(seqNo, 0, bytes, 4, 4);
-        System.arraycopy(data, 0, bytes, 8, length);
+        System.arraycopy(data, 0, bytes, HEADERS_LENGTH, length);
         return bytes;
     }
 

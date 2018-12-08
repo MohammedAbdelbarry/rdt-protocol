@@ -19,11 +19,11 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     }
 
     @Override
-    public void acceptAck(long seqNo, long nextSeqNo) {
-        unackedPackets.add(seqNo);
+    public void acceptAck(long seqNo) {
+        unackedPackets.remove(seqNo);
         windowSize++;
         if (seqNo == windowBase) {
-            windowBase = nextSeqNo;
+            windowBase++;
         }
     }
 

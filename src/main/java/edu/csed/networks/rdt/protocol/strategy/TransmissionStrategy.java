@@ -18,7 +18,7 @@ public abstract class TransmissionStrategy {
      * TCP Protocol received ack from client.
      * @param seqNo
      */
-    public abstract void acceptAck(long seqNo, long nextSeqNo);
+    public abstract void acceptAck(long seqNo);
 
     /**
      * TCP Protocol received packet to send from server and set it.

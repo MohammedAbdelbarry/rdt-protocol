@@ -1,8 +1,10 @@
 package edu.csed.networks.rdt.server;
 
+import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.protocol.RDTSocket;
-import edu.csed.networks.rdt.protocol.strategy.TransmissionStrategy;
+import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -19,9 +21,12 @@ public class SenderServer implements Runnable {
 
     private static final int CHUNK_SIZE = 4096;
 
-    public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath, TransmissionStrategy strategy) {
-        this.socket = new RDTSocket(socket, address, port, strategy);
+    public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath, ServerObservable observable) {
+        // TODO: Create new Strategy from config.
+        this.socket = new RDTSocket(socket, address, port, new StopAndWaitStrategy());
+        observable.addListener(this.socket);
         try {
+            System.out.println(String.format("File Path: %s", filePath));
             fileSize = Files.size(new File(filePath).toPath());
             // TODO: calculate number of packets and create a new strategy.
             this.fileStream = new FileInputStream(filePath);
@@ -32,11 +37,12 @@ public class SenderServer implements Runnable {
         }
     }
 
-    private void send(long chunkNum) throws IOException {
+    private void send() throws IOException {
         byte[] bytes = new byte[CHUNK_SIZE];
-        int len = fileStream.read(bytes, (int) (chunkNum * CHUNK_SIZE), CHUNK_SIZE);
+        int len = fileStream.read(bytes, 0, CHUNK_SIZE);
         if (len < CHUNK_SIZE) {
             bytes[len] = 0x03;
+            len++;
         }
         socket.send(bytes, 0, len);
     }
@@ -46,7 +52,7 @@ public class SenderServer implements Runnable {
         int i = 0;
         while (i < fileSize) {
             try {
-                send(i);
+                send();
             } catch (IOException e) {
                 e.printStackTrace();
             }

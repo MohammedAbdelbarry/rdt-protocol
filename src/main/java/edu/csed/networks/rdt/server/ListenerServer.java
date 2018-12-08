@@ -55,16 +55,16 @@ public class ListenerServer implements Runnable, ServerObservable {
 
             try {
                 socket.receive(packet);
-                if (packet.getLength() == 0) {
+                if (packet.getLength() == AckPacket.ACK_LEN) {
                     AckPacket ackPacket = AckPacket.valueOf(packet.getData(), packet.getLength(),
                             packet.getAddress(), packet.getPort());
                     AckEvent event = new AckEvent(ackPacket);
                     broadcast(event);
                 } else {// Data packet.
+                    System.out.println("DATA PACKET RECEIVED");
                     DataPacket dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
-                    // TODO: Add strategy.
                     new SenderServer(socket, packet.getAddress(), packet.getPort(),
-                            new String(dataPacket.getData(), 0, dataPacket.getLength()), null);
+                            new String(dataPacket.getData(), 0, dataPacket.getLength()), this);
                 }
             } catch (IOException e) {
                 e.printStackTrace();

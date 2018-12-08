@@ -28,7 +28,7 @@ public class AckPacket extends Packet {
         short oldChecksum = Conversion.byteArrayToShort(bytes, 0, (short) 0, 0, 2);
         short length = Conversion.byteArrayToShort(bytes, 2, (short) 0, 0, 2);
         int seqNo = Conversion.byteArrayToInt(bytes, 4, 0, 0, 4);
-        if (oldChecksum + seqNo + length != 0) {
+        if (oldChecksum != calculateCheckSum(bytes, 2, ACK_LEN)) {
             throw new IllegalArgumentException("Corrupted Packet");
         }
         return new AckPacket(seqNo, host, port);

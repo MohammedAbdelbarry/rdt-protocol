@@ -21,8 +21,14 @@ public class DataPacket extends Packet {
         short length = Conversion.byteArrayToShort(bytes, 2, (short) 0, 0, 2);
         int seqNo = Conversion.byteArrayToInt(bytes, 4, 0, 0, 4);
         byte[] data = new byte[length];
+        System.out.println(oldChecksum);
+        System.out.println(length);
+        System.out.println(seqNo);
+        System.out.println(calculateCheckSum(bytes, 2, bytes.length));
+//        System.out.println(bytes.length - length);
+        //        System.out.println(new String(bytes, 8, (int) length));
         System.arraycopy(bytes, 8, data, 0, length);
-        if (oldChecksum + seqNo + length + calculateCheckSum(data, 0, length) != 0) {
+        if (oldChecksum != calculateCheckSum(bytes, 2, bytes.length)) {
             throw new IllegalArgumentException("Corrupted Packet");
         }
         return new DataPacket(length, seqNo, data, host, port);
