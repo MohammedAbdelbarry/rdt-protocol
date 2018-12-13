@@ -71,12 +71,4 @@ public class Client {
             e.printStackTrace();
         }
     }
-
-    public static void main(String[] args) throws UnknownHostException, SocketException {
-        InetAddress address = InetAddress.getByName("localhost");
-        int serverPort = 8081;
-        int clientPort = 8082;
-        String fileName = "0d1b53eee747122bcb65744248ff4afc8920.png";
-        new Client(address, serverPort, clientPort, fileName).start();
-    }
 }

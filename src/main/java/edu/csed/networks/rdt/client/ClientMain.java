@@ -8,33 +8,19 @@ import java.net.UnknownHostException;
 import java.util.Scanner;
 
 public class ClientMain {
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws FileNotFoundException, UnknownHostException, SocketException {
         if (args.length < 2) {
-            // TODO: report error of invalid number of arguments
+            throw new IllegalArgumentException("Invalid number of arguments passed to client.");
         }
-        InetAddress address = null;
-        int serverPort = 0, clientPort = 0, recWindow = 0;
-        String fileName = null;
         File file = new File(args[1]);
-        try {
-            Scanner scanner = new Scanner(file);
-            try {
-                address = InetAddress.getByName(scanner.next());
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-            serverPort = scanner.nextInt();
-            clientPort = scanner.nextInt();
-            fileName = scanner.next();
-            recWindow = scanner.nextInt();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-        try {
-            Client client = new Client(address, serverPort, clientPort, fileName);
-//            Client client = new Client(address, serverPort, clientPort, fileName, recWindow);
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
+        Scanner scanner = new Scanner(file);
+        InetAddress address = InetAddress.getByName(scanner.next());
+        int serverPort = scanner.nextInt();
+        int clientPort = scanner.nextInt();
+        String fileName = scanner.next();
+        int recWindow = scanner.nextInt();
+        Client client = new Client(address, serverPort, clientPort, fileName);
+        client.start();
     }
 }
