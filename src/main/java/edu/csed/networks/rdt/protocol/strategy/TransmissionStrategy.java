@@ -4,8 +4,6 @@ public abstract class TransmissionStrategy {
     protected long windowBase;
     protected int windowSize;
 
-    public abstract boolean isAcked(long seqNo);
-
     public long getWindowBase() {
         return windowBase;
     }
@@ -13,6 +11,8 @@ public abstract class TransmissionStrategy {
     public int getWindowSize() {
         return windowSize;
     }
+
+    public abstract boolean isAcked(long seqNo);
 
     /**
      * TCP Protocol received ack from client.
@@ -26,5 +26,5 @@ public abstract class TransmissionStrategy {
      */
     public abstract void sentPacket(long seqNo);
 
-    public abstract void packetTimedOut(long seqNo);
+    public abstract long[] packetTimedOut(long seqNo);
 }

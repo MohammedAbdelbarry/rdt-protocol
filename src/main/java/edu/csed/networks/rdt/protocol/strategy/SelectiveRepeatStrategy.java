@@ -10,7 +10,6 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         unackedPackets = new HashSet<>();
         windowBase = 0;
         windowSize = 1;
-
     }
 
     @Override
@@ -33,7 +32,8 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     }
 
     @Override
-    public void packetTimedOut(long seqNo) {
+    public long[] packetTimedOut(long seqNo) {
         windowSize = Math.max(windowSize / 2, 1);
+        return new long[]{seqNo};
     }
 }

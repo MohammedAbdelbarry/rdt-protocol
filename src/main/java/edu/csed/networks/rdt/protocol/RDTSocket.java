@@ -145,6 +145,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     @Override
     public void accept(AckEvent event) {
         System.out.println("ACK EVENT");
+        System.out.println(String.format("Packet(%d) is acked!", event.getPacket().getSeqNo()));
         if (event.getPacket().getPort() == port && Objects.equals(event.getPacket().getHost(), address)) {
             System.out.println("MY PRECIOUS ACK EVENT");
             long oldWindowBase = strategy.getWindowBase();
@@ -164,14 +165,16 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     @Override
     public void accept(TimeoutEvent event) {
         if (!strategy.isAcked(event.getSeqNo())) {
-            System.out.println(String.format("Packet(%d) Timed Out", seqNo));
-            strategy.packetTimedOut(seqNo);
-            try {
-                System.out.println("Will Try to Resend");
-                send(senderWindow.get(event.getSeqNo()));
-                System.out.println("Resent");
-            } catch (IOException e) {
-                e.printStackTrace();
+            System.out.println(String.format("Packet(%d) Timed Out", event.getSeqNo()));
+            long[] packetsToSend = strategy.packetTimedOut(event.getSeqNo());
+            for (long packetSeqNo : packetsToSend) {
+                try {
+                    System.out.println(String.format("Will Try to Resend packet(%d)", packetSeqNo));
+                    send(senderWindow.get(packetSeqNo));
+                    System.out.println("Resent");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }
