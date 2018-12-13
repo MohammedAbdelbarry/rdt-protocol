@@ -19,6 +19,8 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -26,7 +28,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private InetAddress address;
     private int port;
     private DatagramSocket socket;
-    private Map<Long, Timer> timers;
+    private ConcurrentMap<Long, Timer> timers;
     private TransmissionStrategy strategy;
     private static final long TIMEOUT = 1000;
     private static final int CHUNK_SIZE = 1024;
@@ -34,7 +36,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private double plp;
     private Random rng;
     private Semaphore semaphore;
-    private Map<Long, Packet> senderWindow;
+    private ConcurrentMap<Long, Packet> senderWindow;
     private static final int RWND = 15;
     private TreeMap<Long, Packet> receiverWindow;
     private ReentrantLock lock;
@@ -51,8 +53,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
         semaphore = new Semaphore(0);
-        timers = new HashMap<>();
-        senderWindow = new HashMap<>();
+        timers = new ConcurrentHashMap<>();
+        senderWindow = new ConcurrentHashMap<>();
         receiverWindow = new TreeMap<>();
         lock = new ReentrantLock();
     }
@@ -74,6 +76,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     }
 
     private void send(Packet packet) throws IOException {
+        if (packet == null) {
+            return;
+        }
         System.out.println(String.format("SeqNo=%d, WindowBase=%d, WindowSize=%d", packet.getSeqNo(), strategy.getWindowBase(), strategy.getWindowSize() * CHUNK_SIZE));
         lock.lock();
         if (packet.getSeqNo() < strategy.getWindowBase()) {
@@ -144,9 +149,14 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
 
     @Override
     public void accept(AckEvent event) {
-        System.out.println("ACK EVENT");
         if (event.getPacket().getPort() == port && Objects.equals(event.getPacket().getHost(), address)) {
-            System.out.println("MY PRECIOUS ACK EVENT");
+            lock.lock();
+            if (event.getPacket().getSeqNo() < strategy.getWindowBase()
+                    || event.getPacket().getSeqNo() >= strategy.getWindowBase() + strategy.getWindowSize()) {
+                lock.unlock();
+                return;
+            }
+            System.out.println(String.format("Ack(%d)", event.getPacket().getSeqNo()));
             long oldWindowBase = strategy.getWindowBase();
             strategy.acceptAck(event.getPacket().getSeqNo());
             if (strategy.getWindowBase() > oldWindowBase) {
@@ -158,14 +168,22 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 timers.remove((long) event.getPacket().getSeqNo());
             }
             senderWindow.remove((long) event.getPacket().getSeqNo());
+            lock.unlock();
         }
     }
 
     @Override
     public void accept(TimeoutEvent event) {
+        lock.lock();
+        if (event.getSeqNo() < strategy.getWindowBase()
+                || event.getSeqNo() >= strategy.getWindowBase() + strategy.getWindowSize()) {
+            lock.unlock();
+            return;
+        }
         if (!strategy.isAcked(event.getSeqNo())) {
-            System.out.println(String.format("Packet(%d) Timed Out", seqNo));
-            strategy.packetTimedOut(seqNo);
+            System.out.println(String.format("Packet(%d) Timed Out", event.getSeqNo()));
+            strategy.packetTimedOut(event.getSeqNo());
+            lock.unlock();
             try {
                 System.out.println("Will Try to Resend");
                 send(senderWindow.get(event.getSeqNo()));
@@ -173,6 +191,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
+        if (lock.isHeldByCurrentThread()) {
+            lock.unlock();
         }
     }
 
