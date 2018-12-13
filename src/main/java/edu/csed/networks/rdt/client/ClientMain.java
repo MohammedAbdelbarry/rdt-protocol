@@ -31,7 +31,8 @@ public class ClientMain {
             e.printStackTrace();
         }
         try {
-            Client client = new Client(address, serverPort, clientPort, fileName, recWindow);
+            Client client = new Client(address, serverPort, clientPort, fileName);
+//            Client client = new Client(address, serverPort, clientPort, fileName, recWindow);
         } catch (SocketException e) {
             e.printStackTrace();
         }

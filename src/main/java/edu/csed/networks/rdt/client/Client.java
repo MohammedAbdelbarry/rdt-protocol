@@ -3,6 +3,7 @@ package edu.csed.networks.rdt.client;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
+import org.apache.commons.lang3.Conversion;
 
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -32,16 +33,21 @@ public class Client {
     public void start() {
         requestFile();
         RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(), socket.getPort(), new StopAndWaitStrategy());
-        boolean done = false;
-        while (!done) {
+        long len = 0;
+        long bytesRead = 0;
+        try {
+            byte[] bytes = rdtSocket.receive();
+            System.out.println(bytes.length);
+            len = Conversion.byteArrayToLong(bytes, 0, 0, 0, bytes.length);
+        } catch (IOException e) {
+            return;
+        }
+        while (bytesRead < len) {
             try {
                 byte[] bytes = rdtSocket.receive();
-                int length = bytes.length;
-                if (bytes[bytes.length - 1] == 0x03) {
-                    done = true;
-                    length--;
-                }
-                fileStream.write(bytes, 0, length);
+                bytesRead += bytes.length;
+
+                fileStream.write(bytes, 0, bytes.length);
             } catch (IOException e) {
                 e.printStackTrace();
             }

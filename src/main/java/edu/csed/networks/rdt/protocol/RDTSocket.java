@@ -45,6 +45,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         this.port = port;
         this.strategy = strategy;
         seqNo = 0;
+        plp = 0;
+        long seed = 1; // TODO: GET SEED FROM CONFIG
+        rng = new Random(seed);
         semaphore = new Semaphore(0);
         timers = new HashMap<>();
         senderWindow = new HashMap<>();
@@ -107,7 +110,6 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             byte[] data = new byte[packet.getLength()];
             System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
             DataPacket dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
-            System.out.println(new String(dataPacket.getData(), 0, dataPacket.getLength()));
             AckPacket ackPacket = new AckPacket(dataPacket.getSeqNo(), dataPacket.getHost(), dataPacket.getPort());
             byte[] ackBytes = ackPacket.getBytes();
             DatagramPacket ackDatagramPacket = new DatagramPacket(ackBytes, ackBytes.length,

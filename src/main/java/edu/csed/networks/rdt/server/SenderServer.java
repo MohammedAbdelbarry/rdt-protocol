@@ -3,6 +3,7 @@ package edu.csed.networks.rdt.server;
 import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
+import org.apache.commons.lang3.Conversion;
 
 import java.awt.*;
 import java.io.File;
@@ -28,7 +29,9 @@ public class SenderServer implements Runnable {
         try {
             System.out.println(String.format("File Path: %s", filePath));
             fileSize = Files.size(new File(filePath).toPath());
-            // TODO: calculate number of packets and create a new strategy.
+            byte[] sizeBytes = new byte[Long.BYTES];
+            Conversion.longToByteArray(fileSize, 0, sizeBytes, 0, sizeBytes.length);
+            this.socket.send(sizeBytes, 0, sizeBytes.length);
             this.fileStream = new FileInputStream(filePath);
             workThread = new Thread(this);
             workThread.start();
