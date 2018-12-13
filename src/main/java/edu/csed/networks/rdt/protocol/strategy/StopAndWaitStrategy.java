@@ -14,7 +14,7 @@ public class StopAndWaitStrategy extends SelectiveRepeatStrategy {
     }
 
     @Override
-    public void packetTimedOut(long seqNo) {
-
+    public long[] packetTimedOut(long seqNo) {
+        return new long[]{seqNo};
     }
 }

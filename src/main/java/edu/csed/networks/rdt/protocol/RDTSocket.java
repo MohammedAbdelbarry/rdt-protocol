@@ -182,14 +182,16 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
         if (!strategy.isAcked(event.getSeqNo())) {
             System.out.println(String.format("Packet(%d) Timed Out", event.getSeqNo()));
-            strategy.packetTimedOut(event.getSeqNo());
-            lock.unlock();
-            try {
-                System.out.println("Will Try to Resend");
-                send(senderWindow.get(event.getSeqNo()));
-                System.out.println("Resent");
-            } catch (IOException e) {
-                e.printStackTrace();
+                long[] packetsToSend = strategy.packetTimedOut(event.getSeqNo());
+                lock.unlock();
+                for (long packetSeqNo : packetsToSend) {
+                try {
+                    System.out.println(String.format("Will Try to Resend packet(%d)", packetSeqNo));
+                    send(senderWindow.get(packetSeqNo));
+                    System.out.println("Resent");
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
         if (lock.isHeldByCurrentThread()) {
