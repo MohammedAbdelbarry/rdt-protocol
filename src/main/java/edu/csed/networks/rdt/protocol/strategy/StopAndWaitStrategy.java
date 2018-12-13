@@ -1,5 +1,10 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+
 public class StopAndWaitStrategy extends SelectiveRepeatStrategy {
     public StopAndWaitStrategy() {
         super();
@@ -14,7 +19,7 @@ public class StopAndWaitStrategy extends SelectiveRepeatStrategy {
     }
 
     @Override
-    public long[] packetTimedOut(long seqNo) {
-        return new long[]{seqNo};
+    public Collection<Long> packetTimedOut(long seqNo) {
+        return new ArrayList<>(Collections.singletonList(seqNo));
     }
 }
