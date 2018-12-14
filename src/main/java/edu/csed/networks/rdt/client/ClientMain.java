@@ -10,10 +10,10 @@ import java.util.Scanner;
 public class ClientMain {
 
     public static void main(String[] args) throws FileNotFoundException, UnknownHostException, SocketException {
-        if (args.length < 2) {
+        if (args.length < 1) {
             throw new IllegalArgumentException("Invalid number of arguments passed to client.");
         }
-        File file = new File(args[1]);
+        File file = new File(args[0]);
         Scanner scanner = new Scanner(file);
         InetAddress address = InetAddress.getByName(scanner.next());
         int serverPort = scanner.nextInt();

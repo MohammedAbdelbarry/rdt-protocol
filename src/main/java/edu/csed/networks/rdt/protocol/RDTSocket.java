@@ -13,12 +13,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.Timer;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Semaphore;
@@ -179,9 +174,18 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
         if (!strategy.isAcked(event.getSeqNo())) {
             System.out.println(String.format("Packet(%d) Timed Out", event.getSeqNo()));
-                long[] packetsToSend = strategy.packetTimedOut(event.getSeqNo());
-                lock.unlock();
-                for (long packetSeqNo : packetsToSend) {
+            int oldSize = strategy.getWindowSize();
+            Collection<Long> packetsToSend = strategy.packetTimedOut(event.getSeqNo());
+            int newSize = strategy.getWindowSize();
+            for (long i = strategy.getWindowBase() + newSize; i < strategy.getWindowBase() + newSize; i++) {
+                Timer timer = timers.get(i);
+                if (timer != null) {
+                    timer.cancel();
+                    timers.remove(i);
+                }
+            }
+            lock.unlock();
+            for (long packetSeqNo : packetsToSend) {
                 try {
                     System.out.println(String.format("Will Try to Resend(%d)", packetSeqNo));
                     send(senderWindow.get(packetSeqNo));

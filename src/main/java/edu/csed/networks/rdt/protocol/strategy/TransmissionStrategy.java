@@ -1,5 +1,8 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
+import java.util.Collection;
+import java.util.List;
+
 public abstract class TransmissionStrategy {
     protected long windowBase;
     protected int windowSize;
@@ -26,5 +29,5 @@ public abstract class TransmissionStrategy {
      */
     public abstract void sentPacket(long seqNo);
 
-    public abstract long[] packetTimedOut(long seqNo);
+    public abstract Collection<Long> packetTimedOut(long seqNo);
 }
