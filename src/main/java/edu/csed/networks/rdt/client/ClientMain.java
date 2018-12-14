@@ -20,6 +20,7 @@ public class ClientMain {
         int clientPort = scanner.nextInt();
         String fileName = scanner.next();
         int recWindow = scanner.nextInt();
+        scanner.close();
         Client client = new Client(address, serverPort, clientPort, fileName);
         client.start();
     }

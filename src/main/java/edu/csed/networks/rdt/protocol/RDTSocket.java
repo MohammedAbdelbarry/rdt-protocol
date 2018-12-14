@@ -98,11 +98,10 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         senderWindow.put((long) packet.getSeqNo(), packet);
         byte[] msgBytes = packet.getBytes();
         DatagramPacket datagramPacket = new DatagramPacket(msgBytes, msgBytes.length, address, port);
-        System.out.println("TRYING TO SEND");
         if (rng.nextDouble() > plp) {
             socket.send(datagramPacket);
         }
-        System.out.println(String.format("SENT TO %s&%d", address, port));
+        System.out.println(String.format("Sent(%d)", packet.getSeqNo()));
         strategy.sentPacket(packet.getSeqNo());
         TimeoutTask timerTask = new TimeoutTask(packet.getSeqNo());
         timerTask.addListener(this);
@@ -116,13 +115,11 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         while (receiverWindow.size() < RWND) {
             byte[] buffer = new byte[CHUNK_SIZE + Packet.HEADERS_LENGTH];
             DatagramPacket packet = new DatagramPacket(buffer, CHUNK_SIZE + AckPacket.ACK_LEN);
-            System.out.println("TRYING TO RECEIVE");
-            System.out.println(String.format("Socket From(%s, %d) To(%s, %d)", socket.getLocalAddress(), socket.getLocalPort(), socket.getInetAddress(), socket.getPort()));
             socket.receive(packet);
-            System.out.println("RECEIVED");
             byte[] data = new byte[packet.getLength()];
             System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
             DataPacket dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
+            System.out.println(String.format("Received(%d)", dataPacket.getSeqNo()));
             AckPacket ackPacket = new AckPacket(dataPacket.getSeqNo(), dataPacket.getHost(), dataPacket.getPort());
             byte[] ackBytes = ackPacket.getBytes();
             DatagramPacket ackDatagramPacket = new DatagramPacket(ackBytes, ackBytes.length,
@@ -161,13 +158,13 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             strategy.acceptAck(event.getPacket().getSeqNo());
             if (strategy.getWindowBase() > oldWindowBase) {
                 semaphore.release();
+                senderWindow.remove((long) event.getPacket().getSeqNo());
             }
             Timer timer = timers.get((long) event.getPacket().getSeqNo());
             if (timer != null) {
                 timer.cancel();
                 timers.remove((long) event.getPacket().getSeqNo());
             }
-            senderWindow.remove((long) event.getPacket().getSeqNo());
             lock.unlock();
         }
     }
@@ -186,9 +183,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 lock.unlock();
                 for (long packetSeqNo : packetsToSend) {
                 try {
-                    System.out.println(String.format("Will Try to Resend packet(%d)", packetSeqNo));
+                    System.out.println(String.format("Will Try to Resend(%d)", packetSeqNo));
                     send(senderWindow.get(packetSeqNo));
-                    System.out.println("Resent");
+                    System.out.println(String.format("Resent(%d)", packetSeqNo));
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
