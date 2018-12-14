@@ -13,10 +13,15 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.*;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class RDTSocket implements TimeoutObserver, AckObserver {
@@ -25,16 +30,16 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private DatagramSocket socket;
     private ConcurrentMap<Long, Timer> timers;
     private TransmissionStrategy strategy;
-    private static final long TIMEOUT = 1000;
+    private static final long TIMEOUT = 100;
     private static final int CHUNK_SIZE = 1024;
     private int seqNo;
     private double plp;
     private Random rng;
-    private Semaphore semaphore;
     private ConcurrentMap<Long, Packet> senderWindow;
-    private static final int RWND = 15;
+    private static final int RWND = 100;
     private TreeMap<Long, Packet> receiverWindow;
     private ReentrantLock lock;
+    private Condition sleepCondVar;
 
 
 
@@ -47,11 +52,11 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         plp = 0.1;
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
-        semaphore = new Semaphore(0);
         timers = new ConcurrentHashMap<>();
         senderWindow = new ConcurrentHashMap<>();
         receiverWindow = new TreeMap<>();
         lock = new ReentrantLock();
+        sleepCondVar = lock.newCondition();
     }
 
     public void send(byte[] bytes, int offset, int len) throws IOException {
@@ -82,13 +87,11 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
         while (packet.getSeqNo() >= strategy.getWindowBase() + strategy.getWindowSize()) {
             // Sender should block until the msg is in the senderWindow.
-            lock.unlock();
             try {
-                semaphore.acquire();
+                sleepCondVar.await();
             } catch (InterruptedException ignored) {
 
             }
-            lock.lock();
         }
         senderWindow.put((long) packet.getSeqNo(), packet);
         byte[] msgBytes = packet.getBytes();
@@ -106,6 +109,23 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         lock.unlock();
     }
 
+    private boolean noGaps(Map<Long, ?> window, long seqNo) {
+        for (long i = seqNo; i < seqNo + window.size(); i++) {
+            if (!window.containsKey(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void sendAck(DataPacket dataPacket) throws IOException {
+        AckPacket ackPacket = new AckPacket(dataPacket.getSeqNo(), dataPacket.getHost(), dataPacket.getPort());
+        byte[] ackBytes = ackPacket.getBytes();
+        DatagramPacket ackDatagramPacket = new DatagramPacket(ackBytes, ackBytes.length,
+                ackPacket.getHost(), ackPacket.getPort());
+        socket.send(ackDatagramPacket);
+    }
+
     public byte[] receive() throws IOException {
         while (receiverWindow.size() < RWND) {
             byte[] buffer = new byte[CHUNK_SIZE + Packet.HEADERS_LENGTH];
@@ -114,17 +134,27 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             byte[] data = new byte[packet.getLength()];
             System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
             DataPacket dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
+            if (dataPacket.getSeqNo() >= seqNo + RWND) {
+                System.out.println(String.format("Dropped(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
+                        seqNo, seqNo + RWND - 1, receiverWindow.size()));
+                continue;
+            } else if (dataPacket.getSeqNo() < seqNo) {
+                sendAck(dataPacket);
+                continue;
+            }
             System.out.println(String.format("Received(%d)", dataPacket.getSeqNo()));
-            AckPacket ackPacket = new AckPacket(dataPacket.getSeqNo(), dataPacket.getHost(), dataPacket.getPort());
-            byte[] ackBytes = ackPacket.getBytes();
-            DatagramPacket ackDatagramPacket = new DatagramPacket(ackBytes, ackBytes.length,
-                    ackPacket.getHost(), ackPacket.getPort());
-            socket.send(ackDatagramPacket);
+            sendAck(dataPacket);
             receiverWindow.put((long) dataPacket.getSeqNo(), dataPacket);
-            if (packet.getLength() < CHUNK_SIZE) {
+            if (dataPacket.getSeqNo() == 1586) {
+                System.out.println(receiverWindow.keySet());
+                System.out.println(String.format("Received(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
+                        seqNo, seqNo + RWND - 1, receiverWindow.size()));
+            }
+            if (noGaps(receiverWindow, seqNo)) {
                 break;
             }
         }
+        seqNo += receiverWindow.size();
         int size = 0;
         for (Packet packet : receiverWindow.values()) {
             size += packet.getLength();
@@ -152,7 +182,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             long oldWindowBase = strategy.getWindowBase();
             strategy.acceptAck(event.getPacket().getSeqNo());
             if (strategy.getWindowBase() > oldWindowBase) {
-                semaphore.release();
+                sleepCondVar.signalAll();
                 senderWindow.remove((long) event.getPacket().getSeqNo());
             }
             Timer timer = timers.get((long) event.getPacket().getSeqNo());
@@ -177,21 +207,22 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             int oldSize = strategy.getWindowSize();
             Collection<Long> packetsToSend = strategy.packetTimedOut(event.getSeqNo());
             int newSize = strategy.getWindowSize();
-            for (long i = strategy.getWindowBase() + newSize; i < strategy.getWindowBase() + newSize; i++) {
-                Timer timer = timers.get(i);
-                if (timer != null) {
-                    timer.cancel();
+            for (long i = strategy.getWindowBase() + newSize; i < strategy.getWindowBase() + oldSize; i++) {
+                if (timers.containsKey(i)) {
+                    timers.get(i).cancel();
                     timers.remove(i);
                 }
             }
             lock.unlock();
             for (long packetSeqNo : packetsToSend) {
-                try {
-                    System.out.println(String.format("Will Try to Resend(%d)", packetSeqNo));
-                    send(senderWindow.get(packetSeqNo));
-                    System.out.println(String.format("Resent(%d)", packetSeqNo));
-                } catch (IOException e) {
-                    e.printStackTrace();
+                if (!strategy.isAcked(packetSeqNo)) {
+                    try {
+                        System.out.println(String.format("Will Try to Resend(%d)", packetSeqNo));
+                        send(senderWindow.get(packetSeqNo));
+                        System.out.println(String.format("Resent(%d)", packetSeqNo));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -200,9 +231,13 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
     }
 
-    public void close() {
-        for (Timer timer : timers.values()) {
-            timer.cancel();
+    public synchronized void close() {
+        while (!timers.isEmpty()) {
+            try {
+                wait(TIMEOUT);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

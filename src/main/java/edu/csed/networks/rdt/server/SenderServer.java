@@ -44,10 +44,6 @@ public class SenderServer implements Runnable {
     private void send() throws IOException {
         byte[] bytes = new byte[CHUNK_SIZE];
         int len = fileStream.read(bytes, 0, CHUNK_SIZE);
-        if (len < CHUNK_SIZE) {
-            bytes[len] = 0x03;
-            len++;
-        }
         socket.send(bytes, 0, len);
     }
 

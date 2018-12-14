@@ -2,41 +2,47 @@ package edu.csed.networks.rdt.protocol.strategy;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 
 public class SelectiveRepeatStrategy extends TransmissionStrategy {
     protected Set<Long> unackedPackets;
-    protected long nextUnAcked;
+    protected Set<Long> ackedPackets;
 
     public SelectiveRepeatStrategy() {
         unackedPackets = new HashSet<>();
+        ackedPackets = new HashSet<>();
         windowBase = 0;
         windowSize = 1;
-        nextUnAcked = 0;
     }
 
     @Override
     public boolean isAcked(long seqNo) {
-        return seqNo < windowBase || !unackedPackets.contains(seqNo);
+        return ackedPackets.contains(seqNo);
     }
 
     @Override
     public void acceptAck(long seqNo) {
         unackedPackets.remove(seqNo);
+        ackedPackets.add(seqNo);
         if (seqNo == windowBase) {
-            windowBase = unackedPackets.stream().min(Comparator.comparingLong(x -> x)).orElse(windowBase + windowSize);
+            windowBase = unackedPackets.stream().min(Comparator.comparingLong(x -> x))
+                    .orElse(ackedPackets.stream().max(Comparator.comparingLong(x -> x)).orElse(windowBase) + 1);
+            System.out.println(unackedPackets);
+            System.out.println(ackedPackets.stream().max(Comparator.comparingLong(x -> x)));
             System.out.println(String.format("new Window-Base(%d)", windowBase));
         }
-        windowSize++;
+        if (windowSize < 150) {
+            windowSize++;
+        }
     }
 
     @Override
     public void sentPacket(long seqNo) {
-        unackedPackets.add(seqNo);
-        nextUnAcked = Math.max(nextUnAcked, seqNo + 1);
+        if (!isAcked(seqNo)) {
+            unackedPackets.add(seqNo);
+        }
     }
 
     @Override
@@ -47,6 +53,7 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         for (long i = windowBase + newWindowSize; i < windowBase + windowSize; i++) {
             packets.add(i);
         }
+        windowSize = newWindowSize;
         return packets;
     }
 }
