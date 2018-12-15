@@ -1,7 +1,6 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
 import java.util.Collection;
-import java.util.List;
 
 public abstract class TransmissionStrategy {
     protected long windowBase;

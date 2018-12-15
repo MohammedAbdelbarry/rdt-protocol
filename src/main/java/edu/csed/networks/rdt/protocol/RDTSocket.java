@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -228,6 +229,15 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
 
     public synchronized void close() {
         while (!timers.isEmpty()) {
+            lock.lock();
+            Set<Map.Entry<Long, Timer>> entries = timers.entrySet();
+            for (Map.Entry<Long, Timer> timer : entries) {
+                if (strategy.isAcked(timer.getKey())) {
+                    timer.getValue().cancel();
+                    timers.remove(timer.getKey());
+                }
+            }
+            lock.unlock();
             try {
                 wait(TIMEOUT);
             } catch (InterruptedException e) {
