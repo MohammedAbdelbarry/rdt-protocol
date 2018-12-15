@@ -1,10 +1,10 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 public class SelectiveRepeatStrategy extends TransmissionStrategy {
     protected Set<Long> unackedPackets;
@@ -47,7 +47,7 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
 
     @Override
     public Collection<Long> packetTimedOut(long seqNo) {
-        Collection<Long> packets = new ArrayList<>();
+        Collection<Long> packets = new TreeSet<>();
         packets.add(seqNo);
         int newWindowSize = Math.max(windowSize / 2, 1);
         for (long i = windowBase + newWindowSize; i < windowBase + windowSize; i++) {

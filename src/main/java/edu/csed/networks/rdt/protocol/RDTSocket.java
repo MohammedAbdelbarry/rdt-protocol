@@ -30,7 +30,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private DatagramSocket socket;
     private ConcurrentMap<Long, Timer> timers;
     private TransmissionStrategy strategy;
-    private static final long TIMEOUT = 100;
+    private static final long TIMEOUT = 30;
     private static final int CHUNK_SIZE = 1024;
     private int seqNo;
     private double plp;
@@ -49,7 +49,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         this.port = port;
         this.strategy = strategy;
         seqNo = 0;
-        plp = 0.1;
+        plp = 0.01;
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
         timers = new ConcurrentHashMap<>();
@@ -145,11 +145,6 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             System.out.println(String.format("Received(%d)", dataPacket.getSeqNo()));
             sendAck(dataPacket);
             receiverWindow.put((long) dataPacket.getSeqNo(), dataPacket);
-            if (dataPacket.getSeqNo() == 1586) {
-                System.out.println(receiverWindow.keySet());
-                System.out.println(String.format("Received(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
-                        seqNo, seqNo + RWND - 1, receiverWindow.size()));
-            }
             if (noGaps(receiverWindow, seqNo)) {
                 break;
             }
