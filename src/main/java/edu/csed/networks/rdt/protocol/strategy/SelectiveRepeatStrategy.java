@@ -18,12 +18,12 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     }
 
     @Override
-    public boolean isAcked(long seqNo) {
+    public synchronized boolean isAcked(long seqNo) {
         return ackedPackets.contains(seqNo);
     }
 
     @Override
-    public void acceptAck(long seqNo) {
+    public synchronized void acceptAck(long seqNo) {
         unackedPackets.remove(seqNo);
         ackedPackets.add(seqNo);
         if (seqNo == windowBase) {
@@ -39,14 +39,14 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     }
 
     @Override
-    public void sentPacket(long seqNo) {
+    public synchronized void sentPacket(long seqNo) {
         if (!isAcked(seqNo)) {
             unackedPackets.add(seqNo);
         }
     }
 
     @Override
-    public Collection<Long> packetTimedOut(long seqNo) {
+    public synchronized Collection<Long> packetTimedOut(long seqNo) {
         Collection<Long> packets = new TreeSet<>();
         packets.add(seqNo);
         int newWindowSize = Math.max(windowSize / 2, 1);

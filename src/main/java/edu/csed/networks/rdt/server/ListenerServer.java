@@ -61,7 +61,6 @@ public class ListenerServer implements Runnable, ServerObservable {
                     AckEvent event = new AckEvent(ackPacket);
                     broadcast(event);
                 } else {// Data packet.
-                    System.out.println("DATA PACKET RECEIVED");
                     DataPacket dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
                     new SenderServer(socket, packet.getAddress(), packet.getPort(),
                             new String(dataPacket.getData(), 0, dataPacket.getLength()), this);

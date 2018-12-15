@@ -6,11 +6,11 @@ public abstract class TransmissionStrategy {
     protected long windowBase;
     protected int windowSize;
 
-    public long getWindowBase() {
+    public synchronized long getWindowBase() {
         return windowBase;
     }
 
-    public int getWindowSize() {
+    public synchronized int getWindowSize() {
         return windowSize;
     }
 

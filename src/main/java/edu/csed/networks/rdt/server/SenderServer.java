@@ -3,10 +3,8 @@ package edu.csed.networks.rdt.server;
 import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.SelectiveRepeatStrategy;
-import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 import org.apache.commons.lang3.Conversion;
 
-import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -19,13 +17,15 @@ public class SenderServer implements Runnable {
     private FileInputStream fileStream;
     private Thread workThread;
     private long fileSize;
+    private ServerObservable observable;
 
 
-    private static final int CHUNK_SIZE = 4096;
+    private static final int CHUNK_SIZE = 4096 * 64;
 
     public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath, ServerObservable observable) {
         // TODO: Create new Strategy from config.
         this.socket = new RDTSocket(socket, address, port, new SelectiveRepeatStrategy());
+        this.observable = observable;
         observable.addListener(this.socket);
         try {
             System.out.println(String.format("File Path: %s", filePath));
@@ -61,6 +61,7 @@ public class SenderServer implements Runnable {
         try {
             fileStream.close();
             socket.close();
+            observable.removeListener(socket);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -69,6 +70,7 @@ public class SenderServer implements Runnable {
     public void stop() {
         workThread.stop();
         socket.close();
+        observable.removeListener(socket);
         try {
             fileStream.close();
         } catch (IOException e) {

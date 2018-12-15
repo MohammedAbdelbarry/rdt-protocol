@@ -3,7 +3,6 @@ package edu.csed.networks.rdt.client;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.SelectiveRepeatStrategy;
-import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 import org.apache.commons.lang3.Conversion;
 
 import java.io.File;
@@ -14,7 +13,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.net.UnknownHostException;
 
 public class Client {
     private DatagramSocket socket;
@@ -50,6 +48,12 @@ public class Client {
             try {
                 byte[] bytes = rdtSocket.receive();
                 bytesRead += bytes.length;
+                System.out.println(String.format("Read(%d bytes)", bytes.length));
+
+                if (bytesRead > 150000000) {
+                    System.out.println("Read(" + bytesRead + ", " + len + ")");
+                }
+
 
                 fileStream.write(bytes, 0, bytes.length);
             } catch (IOException e) {

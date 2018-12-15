@@ -7,10 +7,10 @@ import java.net.InetAddress;
 public abstract class Packet {
     protected short checksum;
     protected short length;
-    protected int seqNo;
+    protected long seqNo;
     protected byte[] data;
 
-    public static final int HEADERS_LENGTH = 8;
+    public static final int HEADERS_LENGTH = Short.BYTES + Short.BYTES + Long.BYTES;
 
     protected InetAddress host;
 
@@ -32,7 +32,7 @@ public abstract class Packet {
         return length;
     }
 
-    public int getSeqNo() {
+    public long getSeqNo() {
         return seqNo;
     }
 
@@ -42,10 +42,14 @@ public abstract class Packet {
 
     public byte[] getBytes() {
         byte[] bytes = new byte[HEADERS_LENGTH + length];
-        Conversion.shortToByteArray(checksum, 0, bytes, 0, 2);
-        Conversion.shortToByteArray(length, 0, bytes, 2, 2);
-        Conversion.intToByteArray(seqNo, 0, bytes, 4, 4);
-        System.arraycopy(data, 0, bytes, HEADERS_LENGTH, length);
+        int ptr = 0;
+        Conversion.shortToByteArray(checksum, 0, bytes, 0, Short.BYTES);
+        ptr += Short.BYTES;
+        Conversion.shortToByteArray(length, 0, bytes, ptr, Short.BYTES);
+        ptr += Short.BYTES;
+        Conversion.longToByteArray(seqNo, 0, bytes, ptr, Long.BYTES);
+        ptr += Long.BYTES;
+        System.arraycopy(data, 0, bytes, ptr, length);
         return bytes;
     }
 
