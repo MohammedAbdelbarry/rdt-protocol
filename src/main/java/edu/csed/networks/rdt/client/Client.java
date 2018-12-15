@@ -3,7 +3,6 @@ package edu.csed.networks.rdt.client;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.SelectiveRepeatStrategy;
-import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 import org.apache.commons.lang3.Conversion;
 
 import java.io.File;
