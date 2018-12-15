@@ -17,11 +17,12 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
-import java.util.Set;
-import java.util.Timer;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -29,7 +30,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private InetAddress address;
     private int port;
     private DatagramSocket socket;
-    private ConcurrentMap<Long, Timer> timers;
+    private ConcurrentMap<Long, ScheduledFuture<?>> timers;
     private TransmissionStrategy strategy;
     private static final long TIMEOUT = 30;
     private static final int CHUNK_SIZE = 1024;
@@ -41,7 +42,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private TreeMap<Long, Packet> receiverWindow;
     private ReentrantLock lock;
     private Condition sleepCondVar;
-
+    private ScheduledThreadPoolExecutor executor;
 
 
     public RDTSocket(DatagramSocket socket, InetAddress address, int port, TransmissionStrategy strategy) {
@@ -58,6 +59,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         receiverWindow = new TreeMap<>();
         lock = new ReentrantLock();
         sleepCondVar = lock.newCondition();
+        int cores = Runtime.getRuntime().availableProcessors();
+        executor = new ScheduledThreadPoolExecutor(cores);
     }
 
     public void send(byte[] bytes, int offset, int len) throws IOException {
@@ -104,9 +107,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         strategy.sentPacket(packet.getSeqNo());
         TimeoutTask timerTask = new TimeoutTask(packet.getSeqNo());
         timerTask.addListener(this);
-        Timer timer = new Timer();
-        timer.schedule(timerTask, TIMEOUT);
-        timers.put((long) packet.getSeqNo(), timer);
+//        Timer timer = new Timer();
+//        timer.schedule(timerTask, TIMEOUT);
+        timers.put((long) packet.getSeqNo(), executor.schedule(timerTask, TIMEOUT, TimeUnit.MILLISECONDS));
         lock.unlock();
     }
 
@@ -181,9 +184,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 sleepCondVar.signalAll();
                 senderWindow.remove((long) event.getPacket().getSeqNo());
             }
-            Timer timer = timers.get((long) event.getPacket().getSeqNo());
+            ScheduledFuture<?> timer = timers.get((long) event.getPacket().getSeqNo());
             if (timer != null) {
-                timer.cancel();
+                timer.cancel(false);
                 timers.remove((long) event.getPacket().getSeqNo());
             }
             lock.unlock();
@@ -205,7 +208,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             int newSize = strategy.getWindowSize();
             for (long i = strategy.getWindowBase() + newSize; i < strategy.getWindowBase() + oldSize; i++) {
                 if (timers.containsKey(i)) {
-                    timers.get(i).cancel();
+                    timers.get(i).cancel(false);
                     timers.remove(i);
                 }
             }
@@ -228,21 +231,6 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     }
 
     public synchronized void close() {
-        while (!timers.isEmpty()) {
-            lock.lock();
-            Set<Map.Entry<Long, Timer>> entries = timers.entrySet();
-            for (Map.Entry<Long, Timer> timer : entries) {
-                if (strategy.isAcked(timer.getKey())) {
-                    timer.getValue().cancel();
-                    timers.remove(timer.getKey());
-                }
-            }
-            lock.unlock();
-            try {
-                wait(TIMEOUT);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+        executor.shutdown();
     }
 }
