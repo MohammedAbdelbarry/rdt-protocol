@@ -1,10 +1,12 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
 import java.util.Collection;
+import java.util.List;
 
 public abstract class TransmissionStrategy {
     protected long windowBase;
     protected int windowSize;
+    protected List<Integer> cwndHistory;
 
     public synchronized long getWindowBase() {
         return windowBase;
@@ -12,6 +14,10 @@ public abstract class TransmissionStrategy {
 
     public synchronized int getWindowSize() {
         return windowSize;
+    }
+
+    public List<Integer> getCwndHistory() {
+        return cwndHistory;
     }
 
     public abstract boolean isAcked(long seqNo);

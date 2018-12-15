@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -27,6 +30,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class RDTSocket implements TimeoutObserver, AckObserver {
     private InetAddress address;
@@ -44,6 +48,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private int recSeqNo;
     private int sendSeqNo;
     private double plp;
+    private double pcp;
     private Random rng;
     private ConcurrentMap<Long, Packet> senderWindow;
     private static final int RWND = 100;
@@ -61,7 +66,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         this.strategy = strategy;
         recSeqNo = 0;
         sendSeqNo = 0;
-        plp = 0.0;
+        plp = 0.01;
+        pcp = 0.1;
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
         timers = new ConcurrentHashMap<>();
@@ -315,6 +321,16 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         lock.unlock();
     }
 
+    private void printCwndHistory() {
+        String history = strategy.getCwndHistory().stream().map(Objects::toString).collect(Collectors.joining("\n"));
+        String filePath = String.format("cwnd-history-%.2f.txt", plp);
+        try {
+            Files.write(Paths.get(filePath), history.getBytes(), StandardOpenOption.CREATE);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public synchronized void close() {
         while (strategy.getWindowBase() < sendSeqNo) {
             try {
@@ -326,6 +342,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         timedOutPackets.add(Long.MAX_VALUE);
         executor.shutdown();
         timers.clear();
+        printCwndHistory();
         System.out.println("Socket Closed");
     }
 

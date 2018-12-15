@@ -1,5 +1,6 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -13,8 +14,10 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     public SelectiveRepeatStrategy() {
         unackedPackets = new HashSet<>();
         ackedPackets = new HashSet<>();
+        cwndHistory = new ArrayList<>();
         windowBase = 0;
         windowSize = 1;
+        cwndHistory.add(windowSize);
     }
 
     @Override
@@ -35,6 +38,7 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         }
         if (windowSize < 150) {
             windowSize++;
+            cwndHistory.add(windowSize);
         }
     }
 
@@ -50,6 +54,7 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         Collection<Long> packets = new TreeSet<>();
         packets.add(seqNo);
         int newWindowSize = Math.max(windowSize / 2, 1);
+        cwndHistory.add(newWindowSize);
         for (long i = windowBase + newWindowSize; i < windowBase + windowSize; i++) {
             packets.add(i);
         }
