@@ -11,12 +11,13 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
     protected Set<Long> unackedPackets;
     protected Set<Long> ackedPackets;
 
-    public SelectiveRepeatStrategy() {
+    public SelectiveRepeatStrategy(int maxCwnd) {
         unackedPackets = new HashSet<>();
         ackedPackets = new HashSet<>();
         cwndHistory = new ArrayList<>();
         windowBase = 0;
         windowSize = 1;
+        this.maxCwnd = maxCwnd;
         cwndHistory.add(windowSize);
     }
 
@@ -36,7 +37,7 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
             System.out.println(ackedPackets.stream().max(Comparator.comparingLong(x -> x)));
             System.out.println(String.format("new Window-Base(%d)", windowBase));
         }
-        if (windowSize < 150) {
+        if (windowSize < maxCwnd) {
             windowSize++;
             cwndHistory.add(windowSize);
         }

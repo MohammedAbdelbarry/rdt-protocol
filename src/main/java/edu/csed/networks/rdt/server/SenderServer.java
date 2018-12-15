@@ -3,6 +3,7 @@ package edu.csed.networks.rdt.server;
 import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.SelectiveRepeatStrategy;
+import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 import org.apache.commons.lang3.Conversion;
 
 import java.io.File;
@@ -24,7 +25,7 @@ public class SenderServer implements Runnable {
 
     public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath, ServerObservable observable) {
         // TODO: Create new Strategy from config.
-        this.socket = new RDTSocket(socket, address, port, new SelectiveRepeatStrategy());
+        this.socket = new RDTSocket(socket, address, port, new SelectiveRepeatStrategy(150), 1);
         this.observable = observable;
         observable.addListener(this.socket);
         try {

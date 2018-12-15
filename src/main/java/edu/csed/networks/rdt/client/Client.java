@@ -3,6 +3,7 @@ package edu.csed.networks.rdt.client;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.protocol.RDTSocket;
 import edu.csed.networks.rdt.protocol.strategy.SelectiveRepeatStrategy;
+import edu.csed.networks.rdt.protocol.strategy.StopAndWaitStrategy;
 import org.apache.commons.lang3.Conversion;
 
 import java.io.File;
@@ -18,12 +19,14 @@ public class Client {
     private DatagramSocket socket;
     private String fileName;
     private FileOutputStream fileStream;
+    private int recWindow;
     private static final String DOWNLOADS_FOLDER = "client-downloads";
 
-    public Client(InetAddress address, int serverPort, int clientPort, String fileName) throws SocketException {
+    public Client(InetAddress address, int serverPort, int clientPort, String fileName, int recWindow) throws SocketException {
         socket = new DatagramSocket(clientPort);
         socket.connect(address, serverPort);
         this.fileName = fileName;
+        this.recWindow = recWindow;
         try {
             new File(DOWNLOADS_FOLDER).mkdir();
             this.fileStream = new FileOutputStream(DOWNLOADS_FOLDER + File.separator + fileName);
@@ -34,7 +37,7 @@ public class Client {
 
     public void start() {
         requestFile();
-        RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(), socket.getPort(), new SelectiveRepeatStrategy());
+        RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(), socket.getPort(), new SelectiveRepeatStrategy(1), recWindow);
         long len = 0;
         long bytesRead = 0;
         try {

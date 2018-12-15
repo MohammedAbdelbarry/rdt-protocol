@@ -16,7 +16,6 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -52,7 +51,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private double pcp;
     private Random rng;
     private ConcurrentMap<Long, Packet> senderWindow;
-    private static final int RWND = 100;
+    private int rwnd;
     private TreeMap<Long, Packet> receiverWindow;
     private ReentrantLock lock;
     private Condition sleepCondVar;
@@ -60,15 +59,16 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private Thread cleanerThread;
     private PriorityBlockingQueue<Long> timedOutPackets;
 
-    public RDTSocket(DatagramSocket socket, InetAddress address, int port, TransmissionStrategy strategy) {
+    public RDTSocket(DatagramSocket socket, InetAddress address, int port, TransmissionStrategy strategy, int rwnd) {
         this.address = address;
         this.socket = socket;
         this.port = port;
         this.strategy = strategy;
+        this.rwnd = rwnd;
         recSeqNo = 0;
         sendSeqNo = 0;
-        plp = 0.0;
-        pcp = 0.1;
+        plp = 0.05;
+        pcp = 0.0;
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
         timers = new ConcurrentHashMap<>();
@@ -226,7 +226,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     }
 
     public byte[] receive() throws IOException {
-        while (receiverWindow.size() < RWND) {
+        while (receiverWindow.size() < rwnd) {
             byte[] buffer = new byte[CHUNK_SIZE + Packet.HEADERS_LENGTH];
             DatagramPacket packet = new DatagramPacket(buffer, CHUNK_SIZE + Packet.HEADERS_LENGTH);
             socket.receive(packet);
@@ -239,9 +239,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 System.out.println("Received Corrupted Packet");
                 continue;
             }
-            if (dataPacket.getSeqNo() >= recSeqNo + RWND) {
+            if (dataPacket.getSeqNo() >= recSeqNo + rwnd) {
                 System.out.println(String.format("Dropped(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
-                        recSeqNo, recSeqNo + RWND - 1, receiverWindow.size()));
+                        recSeqNo, recSeqNo + rwnd - 1, receiverWindow.size()));
                 continue;
             } else if (dataPacket.getSeqNo() < recSeqNo || receiverWindow.containsKey(dataPacket.getSeqNo())) {
                 sendAck(dataPacket);
@@ -339,7 +339,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         String history = strategy.getCwndHistory().stream().map(Objects::toString).collect(Collectors.joining("\n"));
         String filePath = String.format("cwnd-history-%.2f.txt", plp);
         try {
-            Files.write(Paths.get(filePath), history.getBytes(), StandardOpenOption.CREATE);
+            Files.write(Paths.get(filePath), history.getBytes());
         } catch (IOException e) {
             e.printStackTrace();
         }

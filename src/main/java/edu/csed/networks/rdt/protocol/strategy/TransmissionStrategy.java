@@ -7,6 +7,7 @@ public abstract class TransmissionStrategy {
     protected long windowBase;
     protected int windowSize;
     protected List<Integer> cwndHistory;
+    protected int maxCwnd;
 
     public synchronized long getWindowBase() {
         return windowBase;
