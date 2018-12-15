@@ -1,5 +1,6 @@
 package edu.csed.networks.rdt.packet;
 
+import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
 import org.apache.commons.lang3.Conversion;
 
 import java.net.InetAddress;
@@ -21,7 +22,7 @@ public class AckPacket extends Packet {
 
 
 
-    public static AckPacket valueOf(byte[] bytes, int packetLength, InetAddress host, int port) {
+    public static AckPacket valueOf(byte[] bytes, int packetLength, InetAddress host, int port) throws PacketCorruptedException {
         if (packetLength != ACK_LEN) {
             throw new IllegalArgumentException(String.format("Expected 8 bytes but got %d", packetLength));
         }
@@ -32,12 +33,12 @@ public class AckPacket extends Packet {
         ptr += Short.BYTES;
         long seqNo = Conversion.byteArrayToLong(bytes, ptr, 0, 0, Long.BYTES);
         if (oldChecksum != calculateCheckSum(bytes, 2, ACK_LEN)) {
-            throw new IllegalArgumentException("Corrupted Packet");
+            throw new PacketCorruptedException("Corrupted Packet");
         }
         return new AckPacket(seqNo, host, port);
     }
 
-    public static AckPacket valueOf(byte[] bytes, InetAddress host, int port) {
+    public static AckPacket valueOf(byte[] bytes, InetAddress host, int port) throws PacketCorruptedException {
         return valueOf(bytes, bytes.length, host, port);
     }
 }

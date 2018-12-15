@@ -5,6 +5,7 @@ import edu.csed.networks.rdt.observer.ServerObservable;
 import edu.csed.networks.rdt.observer.event.AckEvent;
 import edu.csed.networks.rdt.packet.AckPacket;
 import edu.csed.networks.rdt.packet.DataPacket;
+import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -56,12 +57,25 @@ public class ListenerServer implements Runnable, ServerObservable {
             try {
                 socket.receive(packet);
                 if (packet.getLength() == AckPacket.ACK_LEN) {
-                    AckPacket ackPacket = AckPacket.valueOf(packet.getData(), packet.getLength(),
-                            packet.getAddress(), packet.getPort());
+                    AckPacket ackPacket = null;
+                    try {
+                        ackPacket = AckPacket.valueOf(packet.getData(), packet.getLength(),
+                                packet.getAddress(), packet.getPort());
+                    } catch (PacketCorruptedException e) {
+                        System.out.println("Received Corrupted Ack");
+                        continue;
+                    }
                     AckEvent event = new AckEvent(ackPacket);
                     broadcast(event);
                 } else {// Data packet.
-                    DataPacket dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
+                    DataPacket dataPacket = null;
+                    try {
+                        dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
+                        System.out.println(String.format("Connect(%s, %d)", packet.getAddress(), packet.getPort()));
+                    } catch (PacketCorruptedException e) {
+                        System.out.println("Received Corrupted Connection Request");
+                        continue;
+                    }
                     new SenderServer(socket, packet.getAddress(), packet.getPort(),
                             new String(dataPacket.getData(), 0, dataPacket.getLength()), this);
                 }

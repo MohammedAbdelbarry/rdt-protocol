@@ -7,6 +7,7 @@ import edu.csed.networks.rdt.observer.event.TimeoutEvent;
 import edu.csed.networks.rdt.packet.AckPacket;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.packet.Packet;
+import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
 import edu.csed.networks.rdt.protocol.strategy.TransmissionStrategy;
 
 import java.io.IOException;
@@ -66,7 +67,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         this.strategy = strategy;
         recSeqNo = 0;
         sendSeqNo = 0;
-        plp = 0.01;
+        plp = 0.0;
         pcp = 0.1;
         long seed = 1; // TODO: GET SEED FROM CONFIG
         rng = new Random(seed);
@@ -171,8 +172,15 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             }
         }
         senderWindow.put(packet.getSeqNo(), packet);
+        // Corrupt Packet.
+        if (rng.nextDouble() <= pcp) {
+            packet = new DataPacket(packet.getLength(), packet.getSeqNo(),
+                    packet.getData(), packet.getHost(), packet.getPort());
+            packet.corrupt();
+        }
         byte[] msgBytes = packet.getBytes();
         DatagramPacket datagramPacket = new DatagramPacket(msgBytes, msgBytes.length, address, port);
+        // Drop Packet.
         if (rng.nextDouble() > plp) {
             try {
                 socket.send(datagramPacket);
@@ -224,7 +232,13 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             socket.receive(packet);
             byte[] data = new byte[packet.getLength()];
             System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
-            DataPacket dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
+            DataPacket dataPacket;
+            try {
+                dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
+            } catch (PacketCorruptedException e) {
+                System.out.println("Received Corrupted Packet");
+                continue;
+            }
             if (dataPacket.getSeqNo() >= recSeqNo + RWND) {
                 System.out.println(String.format("Dropped(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
                         recSeqNo, recSeqNo + RWND - 1, receiverWindow.size()));

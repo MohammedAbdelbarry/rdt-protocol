@@ -40,6 +40,10 @@ public abstract class Packet {
         return data;
     }
 
+    public void corrupt() {
+        checksum++;
+    }
+
     public byte[] getBytes() {
         byte[] bytes = new byte[HEADERS_LENGTH + length];
         int ptr = 0;

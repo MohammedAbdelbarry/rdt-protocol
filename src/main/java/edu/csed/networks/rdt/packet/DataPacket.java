@@ -1,5 +1,6 @@
 package edu.csed.networks.rdt.packet;
 
+import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
 import org.apache.commons.lang3.Conversion;
 
 import java.net.InetAddress;
@@ -16,7 +17,7 @@ public class DataPacket extends Packet {
         this.port = port;
     }
 
-    public static DataPacket valueOf(byte[] bytes, InetAddress host, int port) {
+    public static DataPacket valueOf(byte[] bytes, InetAddress host, int port) throws PacketCorruptedException {
         int ptr = 0;
         short oldChecksum = Conversion.byteArrayToShort(bytes, 0, (short) 0, 0, Short.BYTES);
         ptr += Short.BYTES;
@@ -33,7 +34,7 @@ public class DataPacket extends Packet {
         //        System.out.println(new String(bytes, 8, (int) length));
         System.arraycopy(bytes, ptr, data, 0, length);
         if (oldChecksum != calculateCheckSum(bytes, Short.BYTES, bytes.length)) {
-            throw new IllegalArgumentException("Corrupted Packet");
+            throw new PacketCorruptedException("Corrupted Packet");
         }
         return new DataPacket(length, seqNo, data, host, port);
     }
