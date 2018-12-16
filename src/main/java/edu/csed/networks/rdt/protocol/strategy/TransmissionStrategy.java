@@ -36,4 +36,6 @@ public abstract class TransmissionStrategy {
     public abstract void sentPacket(long seqNo);
 
     public abstract Collection<Long> packetTimedOut(long seqNo);
+
+    public abstract boolean canTimeOut(long seqNo);
 }

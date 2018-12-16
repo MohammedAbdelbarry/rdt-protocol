@@ -62,4 +62,9 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         windowSize = newWindowSize;
         return packets;
     }
+
+    @Override
+    public boolean canTimeOut(long seqNo) {
+        return true;
+    }
 }
