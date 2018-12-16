@@ -36,7 +36,8 @@ public class Client {
 
     public void start() {
         requestFile();
-        RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(), socket.getPort(), new SelectiveRepeatStrategy(1), recWindow);
+        RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(),
+                socket.getPort(), new SelectiveRepeatStrategy(1), recWindow);
         long len = 0;
         long bytesRead = 0;
         try {
@@ -50,12 +51,8 @@ public class Client {
             try {
                 byte[] bytes = rdtSocket.receive();
                 bytesRead += bytes.length;
+
                 System.out.println(String.format("Read(%d bytes)", bytes.length));
-
-                if (bytesRead > 150000000) {
-                    System.out.println("Read(" + bytesRead + ", " + len + ")");
-                }
-
 
                 fileStream.write(bytes, 0, bytes.length);
             } catch (IOException e) {

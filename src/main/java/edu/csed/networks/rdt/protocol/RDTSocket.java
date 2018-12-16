@@ -309,12 +309,10 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             }
             System.out.println(String.format("New-Window(%d, %d)", strategy.getWindowBase(), strategy.getWindowSize()));
             for (long packetSeqNo : packetsToSend) {
-                if (!strategy.isAcked(packetSeqNo)) {
-                    if (!timedOutPackets.contains(packetSeqNo)) {
-                        System.out.println(String.format("Try-Queue(%d)", packetSeqNo));
-                        timedOutPackets.add(packetSeqNo);
-                        System.out.println(String.format("Queued(%d)", packetSeqNo));
-                    }
+                if (!timedOutPackets.contains(packetSeqNo)) {
+                    System.out.println(String.format("Try-Queue(%d)", packetSeqNo));
+                    timedOutPackets.add(packetSeqNo);
+                    System.out.println(String.format("Queued(%d)", packetSeqNo));
                 }
             }
         }

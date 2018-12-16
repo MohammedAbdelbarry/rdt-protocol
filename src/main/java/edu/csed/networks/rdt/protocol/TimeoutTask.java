@@ -44,7 +44,6 @@ public class TimeoutTask extends TimerTask implements TimerObservable {
     public synchronized void run() {
         while (!stop || !startTimes.isEmpty()) {
             for (Map.Entry<Long, SequenceTime> seqTime : startTimes.entrySet()) {
-                System.out.println("Nyahahaha");
                 if (System.currentTimeMillis() - seqTime.getValue().getStartTime() >= seqTime.getValue().getTimeOut()) {
                     if (seqTime.getKey() < strategy.getWindowBase()) {
                         startTimes.remove(seqTime.getKey());
