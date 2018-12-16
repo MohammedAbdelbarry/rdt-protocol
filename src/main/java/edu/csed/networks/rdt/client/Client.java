@@ -37,7 +37,7 @@ public class Client {
     public void start() {
         requestFile();
         RDTSocket rdtSocket = new RDTSocket(socket, socket.getInetAddress(),
-                socket.getPort(), new SelectiveRepeatStrategy(1), recWindow);
+                socket.getPort(), new SelectiveRepeatStrategy(1), recWindow, 0, 0, 0);
         long len = 0;
         long bytesRead = 0;
         try {

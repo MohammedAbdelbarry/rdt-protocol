@@ -19,12 +19,12 @@ public class SenderServer implements Runnable {
     private long fileSize;
     private ServerObservable observable;
 
-
     private static final int CHUNK_SIZE = 4096 * 64;
 
-    public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath, ServerObservable observable) {
+    public SenderServer(DatagramSocket socket, InetAddress address, int port, String filePath,
+                                int maxCwnd, int seed, double plp, double pcp, ServerObservable observable) {
         // TODO: Create new Strategy from config.
-        this.socket = new RDTSocket(socket, address, port, new SelectiveRepeatStrategy(150), 1);
+        this.socket = new RDTSocket(socket, address, port, new SelectiveRepeatStrategy(maxCwnd), 1, seed, plp, pcp);
         this.observable = observable;
         observable.addListener(this.socket);
         try {

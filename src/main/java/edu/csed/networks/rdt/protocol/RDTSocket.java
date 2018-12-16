@@ -54,7 +54,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
     private PriorityBlockingQueue<Long> timedOutPackets;
     private TimeoutTask timerTask;
 
-    public RDTSocket(DatagramSocket socket, InetAddress address, int port, TransmissionStrategy strategy, int rwnd) {
+    public RDTSocket(DatagramSocket socket, InetAddress address, int port, TransmissionStrategy strategy,
+                            int rwnd, int seed, double plp, double pcp) {
         this.address = address;
         this.socket = socket;
         this.port = port;
@@ -62,9 +63,8 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         this.rwnd = rwnd;
         recSeqNo = 0;
         sendSeqNo = 0;
-        plp = 0.1;
-        pcp = 0.1;
-        long seed = 1; // TODO: GET SEED FROM CONFIG
+        this.plp = plp;
+        this.pcp = pcp;
         rng = new Random(seed);
         senderWindow = new ConcurrentHashMap<>();
         receiverWindow = new TreeMap<>();

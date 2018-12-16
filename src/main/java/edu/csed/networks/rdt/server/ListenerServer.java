@@ -19,12 +19,20 @@ public class ListenerServer implements Runnable, ServerObservable {
 
     private DatagramSocket socket;
     private Set<AckObserver> observers;
+    private int maxCwnd;
+    private int seed;
+    private double plp;
+    private double pcp;
 
     private static final int MAX_LEN = 4096;
 
-    public ListenerServer(DatagramSocket socket) {
+    public ListenerServer(DatagramSocket socket, int maxCwnd, int seed, double plp, double pcp) {
         this.socket = socket;
         this.observers = new HashSet<>();
+        this.maxCwnd = maxCwnd;
+        this.seed = seed;
+        this.plp = plp;
+        this.pcp = pcp;
     }
 
     @Override
@@ -77,7 +85,8 @@ public class ListenerServer implements Runnable, ServerObservable {
                         continue;
                     }
                     new SenderServer(socket, packet.getAddress(), packet.getPort(),
-                            new String(dataPacket.getData(), 0, dataPacket.getLength()), this);
+                            new String(dataPacket.getData(), 0, dataPacket.getLength()), this.maxCwnd, this.seed,
+                            this.plp, this.pcp, this);
                 }
             } catch (IOException e) {
                 e.printStackTrace();
