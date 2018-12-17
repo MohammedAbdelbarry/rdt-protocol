@@ -1,5 +1,8 @@
 package edu.csed.networks.rdt.protocol.strategy;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -10,6 +13,7 @@ import java.util.TreeSet;
 public class SelectiveRepeatStrategy extends TransmissionStrategy {
     protected Set<Long> unackedPackets;
     protected Set<Long> ackedPackets;
+    private static final Logger LOGGER = LogManager.getLogger(SelectiveRepeatStrategy.class);
 
     public SelectiveRepeatStrategy(int maxCwnd) {
         unackedPackets = new HashSet<>();
@@ -33,9 +37,9 @@ public class SelectiveRepeatStrategy extends TransmissionStrategy {
         if (seqNo == windowBase) {
             windowBase = unackedPackets.stream().min(Comparator.comparingLong(x -> x))
                     .orElse(ackedPackets.stream().max(Comparator.comparingLong(x -> x)).orElse(windowBase) + 1);
-            System.out.println(unackedPackets);
-            System.out.println(ackedPackets.stream().max(Comparator.comparingLong(x -> x)));
-            System.out.println(String.format("new Window-Base(%d)", windowBase));
+            LOGGER.trace(unackedPackets);
+            LOGGER.trace(ackedPackets.stream().max(Comparator.comparingLong(x -> x)));
+            LOGGER.debug(String.format("new Window-Base(%d)", windowBase));
         }
         if (windowSize < maxCwnd) {
             windowSize++;

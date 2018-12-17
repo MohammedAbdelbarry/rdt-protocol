@@ -6,6 +6,8 @@ import edu.csed.networks.rdt.observer.event.AckEvent;
 import edu.csed.networks.rdt.packet.AckPacket;
 import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -16,6 +18,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ListenerServer implements Runnable, ServerObservable {
+    private static final Logger LOGGER = LogManager.getLogger(ListenerServer.class);
 
     private DatagramSocket socket;
     private Set<AckObserver> observers;
@@ -59,6 +62,7 @@ public class ListenerServer implements Runnable, ServerObservable {
 
     @Override
     public void run() {
+        LOGGER.debug("\nListener Started\n-----------------------------------------");
         while (!socket.isClosed()) {
             DatagramPacket packet = new DatagramPacket(new byte[MAX_LEN], MAX_LEN);
 
@@ -70,7 +74,7 @@ public class ListenerServer implements Runnable, ServerObservable {
                         ackPacket = AckPacket.valueOf(packet.getData(), packet.getLength(),
                                 packet.getAddress(), packet.getPort());
                     } catch (PacketCorruptedException e) {
-                        System.out.println("Received Corrupted Ack");
+                        LOGGER.debug("Received Corrupted Ack");
                         continue;
                     }
                     AckEvent event = new AckEvent(ackPacket);
@@ -79,9 +83,9 @@ public class ListenerServer implements Runnable, ServerObservable {
                     DataPacket dataPacket = null;
                     try {
                         dataPacket = DataPacket.valueOf(packet.getData(), packet.getAddress(), packet.getPort());
-                        System.out.println(String.format("Connect(%s, %d)", packet.getAddress(), packet.getPort()));
+                        LOGGER.info(String.format("Connect(%s, %d)", packet.getAddress(), packet.getPort()));
                     } catch (PacketCorruptedException e) {
-                        System.out.println("Received Corrupted Connection Request");
+                        LOGGER.debug("Received Corrupted Connection Request");
                         continue;
                     }
                     new SenderServer(socket, packet.getAddress(), packet.getPort(),

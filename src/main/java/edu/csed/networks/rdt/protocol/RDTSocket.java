@@ -9,6 +9,8 @@ import edu.csed.networks.rdt.packet.DataPacket;
 import edu.csed.networks.rdt.packet.Packet;
 import edu.csed.networks.rdt.packet.exceptions.PacketCorruptedException;
 import edu.csed.networks.rdt.protocol.strategy.TransmissionStrategy;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -30,6 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class RDTSocket implements TimeoutObserver, AckObserver {
+    private static final Logger LOGGER = LogManager.getLogger(RDTSocket.class);
     private InetAddress address;
     private int port;
     private DatagramSocket socket;
@@ -80,32 +83,31 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 while (true) {
                     long seqNo = -1;
                     try {
-                        System.out.println("Try-Take");
+                        LOGGER.debug("Try-Take");
                         seqNo = timedOutPackets.take();
-                        System.out.println(String.format("Take(%d)", seqNo));
+                        LOGGER.debug(String.format("Take(%d)", seqNo));
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                     if (seqNo == Long.MAX_VALUE) {
-                        System.out.println("Cleaner is Done");
+                        LOGGER.debug("Cleaner is Done");
                         break;
                     }
-                    System.out.println(String.format("Packet(%d) is not in sender window?%s", seqNo, senderWindow.get(seqNo) == null));
+                    LOGGER.trace(String.format("Packet(%d) is not in sender window?%s", seqNo, senderWindow.get(seqNo) == null));
                     if (seqNo != -1 && seqNo >= strategy.getWindowBase() && senderWindow.get(seqNo) != null) {
                         try {
                             Packet packet = senderWindow.get(seqNo);
-//                        System.out.println(String.format("Trying to Resend(%d)", seqNo));
                             if (!trySend(packet)) {
                                 timedOutPackets.add(seqNo);
                                 try {
-                                    wait(30);
+                                    wait(1);
                                 } catch (InterruptedException e) {
                                     e.printStackTrace();
                                 }
-                                System.out.println(String.format("Can't Resend(%d, Window(%d, %d))", seqNo,
+                                LOGGER.trace(String.format("Can't Resend(%d, Window(%d, %d))", seqNo,
                                         strategy.getWindowBase(), strategy.getWindowBase() + strategy.getWindowSize()));
                             } else {
-                                System.out.println(String.format("Resent(%d)", seqNo));
+                                LOGGER.info(String.format("Resent(%d)", seqNo));
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -154,7 +156,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             return true;
         }
         lock.lock();
-        System.out.println(String.format("SeqNo=%d, WindowBase=%d, WindowSize=%d, PacketLength=%d", packet.getSeqNo(), strategy.getWindowBase(), strategy.getWindowSize(), packet.getLength()));
+        LOGGER.trace(String.format("SeqNo=%d, WindowBase=%d, WindowSize=%d, PacketLength=%d", packet.getSeqNo(), strategy.getWindowBase(), strategy.getWindowSize(), packet.getLength()));
         while (packet.getSeqNo() >= strategy.getWindowBase() + strategy.getWindowSize()) {
             // Sender should block until the msg is in the senderWindow.
             if (!sleep) {
@@ -173,6 +175,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             packet = new DataPacket(packet.getLength(), packet.getSeqNo(),
                     packet.getData(), packet.getHost(), packet.getPort());
             packet.corrupt();
+            LOGGER.info(String.format("Corrupted(%d)", packet.getSeqNo()));
         }
         byte[] msgBytes = packet.getBytes();
         DatagramPacket datagramPacket = new DatagramPacket(msgBytes, msgBytes.length, address, port);
@@ -184,9 +187,9 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 lock.unlock();
                 throw e;
             }
-            System.out.println(String.format("Sent(%d)", packet.getSeqNo()));
+            LOGGER.info(String.format("Sent(%d)", packet.getSeqNo()));
         } else {
-            System.out.println(String.format("Dropped(%d)", packet.getSeqNo()));
+            LOGGER.info(String.format("Dropped(%d)", packet.getSeqNo()));
         }
         strategy.sentPacket(packet.getSeqNo());
         timerTask.addTimer(packet.getSeqNo(), timeOut);
@@ -226,18 +229,18 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
             try {
                 dataPacket = DataPacket.valueOf(data, packet.getAddress(), packet.getPort());
             } catch (PacketCorruptedException e) {
-                System.out.println("Received Corrupted Packet");
+                LOGGER.trace("Received Corrupted Packet");
                 continue;
             }
             if (dataPacket.getSeqNo() >= recSeqNo + rwnd) {
-                System.out.println(String.format("Dropped(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
+                LOGGER.info(String.format("Dropped(%d, Window(%d, %d, %d))", dataPacket.getSeqNo(),
                         recSeqNo, recSeqNo + rwnd - 1, receiverWindow.size()));
                 continue;
             } else if (dataPacket.getSeqNo() < recSeqNo || receiverWindow.containsKey(dataPacket.getSeqNo())) {
                 sendAck(dataPacket);
                 continue;
             }
-            System.out.println(String.format("Received(%d, %d bytes)", dataPacket.getSeqNo(), dataPacket.getLength()));
+            LOGGER.info(String.format("Received(%d, %d bytes)", dataPacket.getSeqNo(), dataPacket.getLength()));
             sendAck(dataPacket);
             receiverWindow.put(dataPacket.getSeqNo(), dataPacket);
             if (noGaps(receiverWindow, recSeqNo)) {
@@ -266,7 +269,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 return;
             }
             lock.lock();
-            System.out.println(String.format("Ack(%d)", event.getPacket().getSeqNo()));
+            LOGGER.info(String.format("Ack(%d)", event.getPacket().getSeqNo()));
             long oldWindowBase = strategy.getWindowBase();
             strategy.acceptAck(event.getPacket().getSeqNo());
             long newBase = strategy.getWindowBase();
@@ -286,7 +289,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
                 eRTT = (1 - ALPHA) * eRTT + ALPHA * RTT;
                 devRTT = (1 - BETA) * devRTT + BETA * Math.abs(RTT - eRTT);
                 timeOut = (long) Math.ceil(eRTT + 4 * devRTT);
-                System.out.println("TimeOUT is " + timeOut);
+                LOGGER.trace("TimeOUT is " + timeOut);
             }
             lock.unlock();
         }
@@ -300,19 +303,19 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         }
         lock.lock();
         if (!strategy.isAcked(event.getSeqNo())) {
-            System.out.println(String.format("Time-Out(%d)", event.getSeqNo()));
+            LOGGER.info(String.format("Time-Out(%d)", event.getSeqNo()));
             int oldSize = strategy.getWindowSize();
             Collection<Long> packetsToSend = strategy.packetTimedOut(event.getSeqNo());
             int newSize = strategy.getWindowSize();
             for (long i = strategy.getWindowBase() + newSize; i < strategy.getWindowBase() + oldSize; i++) {
                 timerTask.removeTimer(i);
             }
-            System.out.println(String.format("New-Window(%d, %d)", strategy.getWindowBase(), strategy.getWindowSize()));
+            LOGGER.debug(String.format("New-Window(%d, %d)", strategy.getWindowBase(), strategy.getWindowSize()));
             for (long packetSeqNo : packetsToSend) {
                 if (!timedOutPackets.contains(packetSeqNo)) {
-                    System.out.println(String.format("Try-Queue(%d)", packetSeqNo));
+                    LOGGER.debug(String.format("Try-Queue(%d)", packetSeqNo));
                     timedOutPackets.add(packetSeqNo);
-                    System.out.println(String.format("Queued(%d)", packetSeqNo));
+                    LOGGER.debug(String.format("Queued(%d)", packetSeqNo));
                 }
             }
         }
@@ -340,6 +343,6 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         timedOutPackets.add(Long.MAX_VALUE);
         timerTask.stop();
         printCwndHistory();
-        System.out.println("Socket Closed");
+        LOGGER.debug("Socket Closed");
     }
 }
