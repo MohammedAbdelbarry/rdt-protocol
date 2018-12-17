@@ -216,6 +216,7 @@ public class RDTSocket implements TimeoutObserver, AckObserver {
         DatagramPacket ackDatagramPacket = new DatagramPacket(ackBytes, ackBytes.length,
                 ackPacket.getHost(), ackPacket.getPort());
         socket.send(ackDatagramPacket);
+        LOGGER.debug(String.format("Sent-Ack(%d)", dataPacket.getSeqNo()));
     }
 
     public byte[] receive() throws IOException {
